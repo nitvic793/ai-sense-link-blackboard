@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class HostileBehavior : MonoBehaviour
 {
@@ -12,7 +13,7 @@ public class HostileBehavior : MonoBehaviour
 
     public Transform target = null;
 
-    private Blackboard blackboard = new Blackboard();
+    public Blackboard blackboard = new Blackboard();
 
     private List<Task> tasks = new List<Task>();
 
@@ -20,19 +21,22 @@ public class HostileBehavior : MonoBehaviour
 
     private CancellationTokenSource cancellationToken = new CancellationTokenSource();
 
-    private const long taskUpdatePeriod = 1000;
+    private Text exclamation;
 
-    // Use this for initialization
+    private bool isTargetInVisionCone = false;
+
+    private const long taskUpdatePeriod = 100;
+
     void Start()
     {
-        blackboard.Set("IsCloseToTarget", false);
+        blackboard.Set("IsTargetInVisionCone", false);
+        blackboard.Set("SuspicionMeter", 0);
         StartIntelligenceTasks();
     }
 
-    // Update is called once per frame
     void Update()
     {
-        Debug.Log(blackboard.Get<bool>("IsCloseToTarget"));
+        UpdateLastKnownTargetPosition();
     }
 
     private void StartIntelligenceTasks()
@@ -71,16 +75,73 @@ public class HostileBehavior : MonoBehaviour
 
     private void DoSystemsWork()
     {
-        blackboard.Set("IsCloseToTarget", true);
+        blackboard.Set("IsTargetInVisionCone", isTargetInVisionCone);
+        Debug.Log("Suspicion: " + blackboard.Get<int>("SuspicionMeter"));
+        if (isTargetInVisionCone)
+        {
+            var suspicionValue = blackboard.Get<int>("SuspicionMeter");
+            if (suspicionValue >= 100)
+            {
+                suspicionValue = 100; //Full Suspicion
+            }
+            else
+            {
+                suspicionValue += 10; //Ramp up suspicion
+            }
+
+            blackboard.Set("SuspicionMeter", suspicionValue);
+        }
+        else
+        {
+            var suspicionValue = blackboard.Get<int>("SuspicionMeter");
+            if (suspicionValue > 0)
+            {
+                suspicionValue -= 10; //Ramp down suspicion
+            }
+            else
+            {
+                blackboard.Set("SuspicionMeter", 0);
+            }
+
+            blackboard.Set("SuspicionMeter", suspicionValue);
+        }
+    } 
+
+    private void UpdateLastKnownTargetPosition()
+    {
+        if (isTargetInVisionCone)
+        {
+            blackboard.Set("LastKnownPosition", target.transform.position);
+        }
     }
 
     private void DoSenseLinkWork()
     {
 
-    }
+    }   
 
     private void OnDestroy()
     {
         cancellationToken.Cancel();
     }
+
+    void Awake()
+    {
+        exclamation = this.transform.Find("ExCanvas/ExclamationText").GetComponent<Text>();
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        target = other.transform;
+        isTargetInVisionCone = true;
+        exclamation.enabled = true;
+    }
+
+    void OnTriggerExit(Collider other)
+    {
+        target = null;
+        exclamation.enabled = false;
+        isTargetInVisionCone = false;
+    }
+
 }

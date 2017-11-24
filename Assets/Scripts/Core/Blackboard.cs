@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Assets.Scripts.Core
 {
-    class Blackboard
+    public class Blackboard
     {
         private Dictionary<string, object> blackboardData = new Dictionary<string, object>();
 
