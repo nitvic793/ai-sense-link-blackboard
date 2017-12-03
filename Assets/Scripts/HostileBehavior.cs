@@ -5,13 +5,28 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.UI;
 
 public class HostileBehavior : MonoBehaviour
 {
+    private enum PatrolPoint { A, B };
+
     public Guid InstanceID = Guid.NewGuid();
 
     public Transform target = null;
+
+    public bool IsPatrol = true;
+
+    public float PursueSpeed = 10F;
+
+    public int EnemyCoolDownTime = 100;
+
+    public Transform PatrolPointA = null;
+    public Transform PatrolPointB = null;
+    private Transform currentPatrolTarget = null;
+    private PatrolPoint currentPatrolPoint;
+    private Transform targetProxy = null;
 
     public Blackboard blackboard = new Blackboard();
 
@@ -27,16 +42,62 @@ public class HostileBehavior : MonoBehaviour
 
     private const long taskUpdatePeriod = 100;
 
+    private NavMeshAgent navMeshAgent;
+
     void Start()
     {
         blackboard.Set("IsTargetInVisionCone", false);
         blackboard.Set("SuspicionMeter", 0);
+        blackboard.Set("InPursuit", false);
+        blackboard.Set("CoolDownTime", 0);
+        currentPatrolTarget = PatrolPointB;
+        currentPatrolPoint = PatrolPoint.B;
+        navMeshAgent = transform.GetComponent<NavMeshAgent>();
         StartIntelligenceTasks();
     }
 
     void Update()
     {
         UpdateLastKnownTargetPosition();
+        Arbiter();
+    }
+
+    private void Arbiter()
+    {
+        if (blackboard.Get<bool>("InPursuit"))
+        {
+            Pursue();
+        }
+        else if (IsPatrol)
+        {
+            Patrol();
+        }
+    }
+
+    private void Patrol()
+    {
+        if (Vector3.Distance(currentPatrolTarget.transform.position, transform.position) > 1F)
+        {
+            navMeshAgent.destination = currentPatrolTarget.position;
+        }
+        else
+        {
+            if (currentPatrolPoint == PatrolPoint.B)
+            {
+                currentPatrolPoint = PatrolPoint.A;
+                currentPatrolTarget = PatrolPointA;
+            }
+            else
+            {
+                currentPatrolPoint = PatrolPoint.B;
+                currentPatrolTarget = PatrolPointB;
+            }
+        }
+    }
+
+    private void Pursue()
+    {
+        navMeshAgent.destination = targetProxy.position;
     }
 
     private void StartIntelligenceTasks()
@@ -76,7 +137,49 @@ public class HostileBehavior : MonoBehaviour
     private void DoSystemsWork()
     {
         blackboard.Set("IsTargetInVisionCone", isTargetInVisionCone);
-        Debug.Log("Suspicion: " + blackboard.Get<int>("SuspicionMeter"));
+        CheckPursue();
+        HandleSuspicion();
+        UpdatePursueTarget();
+        UpdateCoolDown();
+    }
+
+    private void UpdatePursueTarget()
+    {
+        var suspicionValue = blackboard.Get<int>("SuspicionMeter");
+        if (suspicionValue == 100)
+        {
+            targetProxy = target; //Pursue Target
+            blackboard.Set("InPursuit", true);
+        }
+    }
+
+    private void CheckPursue()
+    {
+        if(blackboard.Get<int>("CoolDownTime") == 0)
+        {
+            blackboard.Set("InPursuit", false);
+            targetProxy = null;
+        }
+    }
+
+    void UpdateCoolDown()
+    {
+        if (blackboard.Get<int>("SuspicionMeter") > 0)
+        {
+            blackboard.Set("CoolDownTime", EnemyCoolDownTime);
+        }
+        else
+        {
+            Debug.Log("Pursue Cool Down: " + blackboard.Get<int>("CoolDownTime"));
+            var coolDown = blackboard.Get<int>("CoolDownTime");
+            coolDown--;
+            if (coolDown <= 0) coolDown = 0;
+            blackboard.Set("CoolDownTime", coolDown);
+        }
+    }
+
+    private void HandleSuspicion()
+    {
         if (isTargetInVisionCone)
         {
             var suspicionValue = blackboard.Get<int>("SuspicionMeter");
@@ -105,7 +208,7 @@ public class HostileBehavior : MonoBehaviour
 
             blackboard.Set("SuspicionMeter", suspicionValue);
         }
-    } 
+    }
 
     private void UpdateLastKnownTargetPosition()
     {
@@ -117,8 +220,16 @@ public class HostileBehavior : MonoBehaviour
 
     private void DoSenseLinkWork()
     {
+        if (blackboard.Get<bool>("InPursuit"))
+        {
+            NotifyLinksWithinRange();
+        }
+    }
 
-    }   
+    private void NotifyLinksWithinRange()
+    {
+
+    }
 
     private void OnDestroy()
     {
@@ -132,16 +243,39 @@ public class HostileBehavior : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
-        target = other.transform;
-        isTargetInVisionCone = true;
-        exclamation.enabled = true;
+        if (other.name == "Player")
+        {
+            if (HasRaycastHitPlayer(other.transform)) //Only allow visibility if a ray cast hits the player object directly.
+            {
+               // targetProxy = other.transform;
+                target = other.transform;
+                isTargetInVisionCone = true;
+                exclamation.enabled = true;
+            }
+        }
+    }
+
+    bool HasRaycastHitPlayer(Transform other)
+    {
+        RaycastHit hit;
+        Physics.Linecast(transform.position, other.position, out hit);
+        return (hit.transform.name == "Player");
+        Ray ray = new Ray(transform.position, (other.position - transform.position).normalized);
+        Physics.Raycast(ray, out hit);
+        if (hit.transform.name == "Player") return true;
+        ray = new Ray(transform.position, (transform.position - other.position).normalized);
+        Physics.Raycast(ray, out hit);
+        return (hit.transform.name == "Player");
     }
 
     void OnTriggerExit(Collider other)
     {
-        target = null;
-        exclamation.enabled = false;
-        isTargetInVisionCone = false;
+        if (other.name == "Player")
+        {
+            target = null;
+            exclamation.enabled = false;
+            isTargetInVisionCone = false;
+        }
     }
 
 }

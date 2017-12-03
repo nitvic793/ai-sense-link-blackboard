@@ -8,7 +8,6 @@ namespace Assets.Scripts.Core
 {
     class SenseLink
     {
-        private HostileBehavior hostileFirst = null;
-        private HostileBehavior hostileSecond = null;
+        private HostileBehavior hostileLink = null;
     }
 }

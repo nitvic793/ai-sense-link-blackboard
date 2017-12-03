@@ -5,8 +5,9 @@ using UnityEditor;
 using System.Collections;
 using System.Collections.Generic;
 
-public class ConeCollider : MonoBehaviour {
-    [SerializeField, Range(0.01f,88.5f)]
+public class ConeCollider : MonoBehaviour
+{
+    [SerializeField, Range(0.01f, 88.5f)]
     private float m_angle = 45;
     [SerializeField]
     private float m_distance = 1;
@@ -19,39 +20,38 @@ public class ConeCollider : MonoBehaviour {
 
     void Awake()
     {
-        //リソースロード
         GameObject cone = Resources.Load("Prefab/ConeCollider") as GameObject;
 
-        //回転を初期位置に
         var initRot = this.transform.rotation;
         this.transform.rotation = Quaternion.LookRotation(Vector3.forward, Vector3.up);
 
-        //メッシュ情報作成
         var coneMesh = cone.GetComponent<MeshFilter>().sharedMesh;
         var vertices = coneMesh.vertices;
-        var triangles = coneMesh.triangles;        
+        var triangles = coneMesh.triangles;
         var forward = this.transform.TransformDirection(Vector3.forward);
         var centerForwardPos = this.transform.position + forward * m_distance;
         var harf = m_distance * Mathf.Tan(m_angle * Mathf.PI / 180f);
         var verticleCount = 0;
-
-        //コーン円状部分のみ頂点座標移動
-        for (int i = 0; i < vertices.Length; i++) {
+        for (int i = 0; i < vertices.Length; i++)
+        {
             var verticeWorldPos = vertices[i] + this.transform.position;
-            if (verticleCount != 2 || i >= 36) {
-                //既に距離1分あるので-1
+            if (verticleCount != 2 || i >= 36)
+            {
+
                 verticeWorldPos += forward * (m_distance - 1);
                 var outVec = (verticeWorldPos - centerForwardPos).normalized;
                 var outPos = centerForwardPos + outVec * harf;
-                //足した分を引く
+
                 vertices[i] = outPos - this.transform.position;
                 verticleCount++;
-            } else {
+            }
+            else
+            {
                 verticleCount = 0;
             }
         }
 
-        //新規メッシュ作成
+
         m_mesh = new Mesh();
         m_mesh.Clear();
         m_mesh.vertices = vertices;
@@ -66,17 +66,22 @@ public class ConeCollider : MonoBehaviour {
         meshCollider.hideFlags = HideFlags.HideInInspector;
         this.transform.rotation = initRot;
 
-        //ローカルスケール調整
-        if(m_isFixScale) {
+
+        if (m_isFixScale)
+        {
             var scale = Vector3.one;
             var parent = this.transform.parent;
-            while (true) {
-                if (parent != null) {
+            while (true)
+            {
+                if (parent != null)
+                {
                     scale.x *= parent.localScale.x;
                     scale.y *= parent.localScale.y;
                     scale.z *= parent.localScale.z;
                     parent = parent.transform.parent;
-                } else {
+                }
+                else
+                {
                     break;
                 }
             }
@@ -87,17 +92,18 @@ public class ConeCollider : MonoBehaviour {
         }
     }
 
-    private void Start() {
+    private void Start()
+    {
 
     }
 
-    private void Update() {
+    private void Update()
+    {
 
     }
 
     GameObject DebugObject(Vector3 pos, float scale = 1.0f, string name = "Sphere")
     {
-        //デバッグ
         var obj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         obj.transform.position = pos;
         obj.transform.localScale = new Vector3(scale, scale, scale);
@@ -111,14 +117,16 @@ public class ConeCollider : MonoBehaviour {
 
 [CustomEditor(typeof(ConeCollider))]
 [CanEditMultipleObjects]
-public class ConeColliderEditor : Editor {
+public class ConeColliderEditor : Editor
+{
     private SerializedProperty m_angle;
     private SerializedProperty m_distance;
     private SerializedProperty m_isTrigger;
     private SerializedProperty m_isFixScale;
     private ConeCollider m_conecollider;
 
-    void OnEnable() {
+    void OnEnable()
+    {
         SetProperty(ref m_angle, "m_angle");
         SetProperty(ref m_distance, "m_distance");
         SetProperty(ref m_isTrigger, "m_isTrigger");
@@ -126,7 +134,8 @@ public class ConeColliderEditor : Editor {
         m_conecollider = target as ConeCollider;
     }
 
-    public override void OnInspectorGUI() {
+    public override void OnInspectorGUI()
+    {
         serializedObject.Update();
         {
             DrawPropertyField(m_angle, "Angle");
@@ -137,8 +146,10 @@ public class ConeColliderEditor : Editor {
         serializedObject.ApplyModifiedProperties();
     }
 
-    void OnSceneGUI() {
-        if (!EditorApplication.isPlaying) {
+    void OnSceneGUI()
+    {
+        if (!EditorApplication.isPlaying)
+        {
             m_distance.floatValue = m_distance.floatValue < 1.0f ? 1.0f : m_distance.floatValue;
             var centerForward = m_conecollider.transform.position + m_conecollider.transform.TransformDirection(Vector3.forward) * m_distance.floatValue;
             var harf = m_distance.floatValue * Mathf.Tan(m_angle.floatValue * Mathf.PI / 180f);
@@ -156,11 +167,13 @@ public class ConeColliderEditor : Editor {
         }
     }
 
-    void SetProperty(ref SerializedProperty property, string name) {
+    void SetProperty(ref SerializedProperty property, string name)
+    {
         property = serializedObject.FindProperty(name);
     }
 
-    void DrawPropertyField(SerializedProperty property, string name) {
+    void DrawPropertyField(SerializedProperty property, string name)
+    {
         EditorGUILayout.PropertyField(property, new GUIContent(name));
     }
 }
