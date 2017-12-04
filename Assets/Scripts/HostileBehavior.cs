@@ -32,7 +32,9 @@ public class HostileBehavior : MonoBehaviour
 
     private List<Task> tasks = new List<Task>();
 
-    private Dictionary<string, SenseLink> senseLinks = new Dictionary<string, SenseLink>();
+    public Dictionary<HostileBehavior, SenseLink> senseLinks = new Dictionary<HostileBehavior, SenseLink>();
+
+    public Dictionary<HostileBehavior, bool> lineOfSightLink = new Dictionary<HostileBehavior, bool>();
 
     private CancellationTokenSource cancellationToken = new CancellationTokenSource();
 
@@ -44,33 +46,64 @@ public class HostileBehavior : MonoBehaviour
 
     private NavMeshAgent navMeshAgent;
 
+    private Vector3 startPosition;
+
     void Start()
     {
-        blackboard.Set("IsTargetInVisionCone", false);
-        blackboard.Set("SuspicionMeter", 0);
-        blackboard.Set("InPursuit", false);
-        blackboard.Set("CoolDownTime", 0);
+        blackboard.Set(Constants.IsTargetInVisionCone, false);
+        blackboard.Set(Constants.SuspicionMeter, 0);
+        blackboard.Set(Constants.InPursuit, false);
+        blackboard.Set(Constants.CoolDownTime, 0);
+        blackboard.Set(Constants.MyPosition, transform.position);
+        blackboard.Set(Constants.MyName, name);
         currentPatrolTarget = PatrolPointB;
         currentPatrolPoint = PatrolPoint.B;
         navMeshAgent = transform.GetComponent<NavMeshAgent>();
+        startPosition = transform.position;
         StartIntelligenceTasks();
+        StartCoroutine(Constants.UpdateLineOfSightLinks);
     }
+
 
     void Update()
     {
+        blackboard.Set(Constants.MyPosition, transform.position);
         UpdateLastKnownTargetPosition();
         Arbiter();
     }
 
     private void Arbiter()
     {
-        if (blackboard.Get<bool>("InPursuit"))
+        navMeshAgent.isStopped = false;
+        if (blackboard.Get<bool>(Constants.InPursuit))
         {
             Pursue();
-        }
-        else if (IsPatrol)
+        }      
+        else if (IsPatrol && blackboard.Get<int>(Constants.SuspicionMeter) == 0)
         {
             Patrol();
+        }
+        else
+        {
+            navMeshAgent.isStopped = true; //Wait
+        }
+
+        if (blackboard.Get<bool>(Constants.CheckPosition))
+        {
+            CheckPosition();
+        }
+    }
+
+    private void CheckPosition()
+    {
+        var lastPosition = blackboard.Get<Vector3>(Constants.LastKnownPosition);
+        if (Vector3.Distance(lastPosition, transform.position) > 1F)
+        {
+            navMeshAgent.destination = lastPosition;
+        }
+        else
+        {
+            blackboard.Set(Constants.CheckPosition, false);
         }
     }
 
@@ -95,48 +128,46 @@ public class HostileBehavior : MonoBehaviour
         }
     }
 
+    private void GoBackToStartPosition()
+    {
+        navMeshAgent.destination = startPosition;
+    }
+
     private void Pursue()
     {
         navMeshAgent.destination = targetProxy.position;
+        blackboard.Set(Constants.CheckPosition, false);
     }
 
     private void StartIntelligenceTasks()
     {
-        tasks.Add(new Task(async () =>
-        {
-            while (true)
-            {
-                cancellationToken.Token.ThrowIfCancellationRequested();
-                lock (blackboard)
-                {
-                    DoSystemsWork();
-                }
-                await Task.Delay(TimeSpan.FromMilliseconds(taskUpdatePeriod), cancellationToken.Token);
-            }
-        }, cancellationToken.Token, TaskCreationOptions.LongRunning));
-
-        tasks.Add(new Task(async () =>
-        {
-            while (true)
-            {
-                cancellationToken.Token.ThrowIfCancellationRequested();
-                lock (blackboard)
-                {
-                    DoSenseLinkWork();
-                }
-                await Task.Delay(TimeSpan.FromMilliseconds(taskUpdatePeriod), cancellationToken.Token);
-            }
-        }, cancellationToken.Token, TaskCreationOptions.LongRunning));
-
+        AddTask(DoSystemsWork);
+        AddTask(DoSenseLinkWork);
         foreach (var task in tasks)
         {
             task.Start();
         }
     }
 
+    private void AddTask(Action action, long updatePeriod = taskUpdatePeriod)
+    {
+        tasks.Add(new Task(async () =>
+        {
+            while (true)
+            {
+                cancellationToken.Token.ThrowIfCancellationRequested();
+                lock (blackboard)
+                {
+                    action();
+                }
+                await Task.Delay(TimeSpan.FromMilliseconds(taskUpdatePeriod), cancellationToken.Token);
+            }
+        }, cancellationToken.Token, TaskCreationOptions.LongRunning));
+    }
+
     private void DoSystemsWork()
     {
-        blackboard.Set("IsTargetInVisionCone", isTargetInVisionCone);
+        blackboard.Set(Constants.IsTargetInVisionCone, isTargetInVisionCone);
         CheckPursue();
         HandleSuspicion();
         UpdatePursueTarget();
@@ -145,36 +176,35 @@ public class HostileBehavior : MonoBehaviour
 
     private void UpdatePursueTarget()
     {
-        var suspicionValue = blackboard.Get<int>("SuspicionMeter");
+        var suspicionValue = blackboard.Get<int>(Constants.SuspicionMeter);
         if (suspicionValue == 100)
         {
             targetProxy = target; //Pursue Target
-            blackboard.Set("InPursuit", true);
+            blackboard.Set(Constants.InPursuit, true);
         }
     }
 
     private void CheckPursue()
     {
-        if(blackboard.Get<int>("CoolDownTime") == 0)
+        if (blackboard.Get<int>(Constants.CoolDownTime) == 0)
         {
-            blackboard.Set("InPursuit", false);
+            blackboard.Set(Constants.InPursuit, false);
             targetProxy = null;
         }
     }
 
     void UpdateCoolDown()
     {
-        if (blackboard.Get<int>("SuspicionMeter") > 0)
+        if (blackboard.Get<int>(Constants.SuspicionMeter) > 0 && blackboard.Get<bool>(Constants.InPursuit))
         {
-            blackboard.Set("CoolDownTime", EnemyCoolDownTime);
+            blackboard.Set(Constants.CoolDownTime, EnemyCoolDownTime);
         }
         else
         {
-            Debug.Log("Pursue Cool Down: " + blackboard.Get<int>("CoolDownTime"));
-            var coolDown = blackboard.Get<int>("CoolDownTime");
+            var coolDown = blackboard.Get<int>(Constants.CoolDownTime);
             coolDown--;
             if (coolDown <= 0) coolDown = 0;
-            blackboard.Set("CoolDownTime", coolDown);
+            blackboard.Set(Constants.CoolDownTime, coolDown);
         }
     }
 
@@ -182,7 +212,7 @@ public class HostileBehavior : MonoBehaviour
     {
         if (isTargetInVisionCone)
         {
-            var suspicionValue = blackboard.Get<int>("SuspicionMeter");
+            var suspicionValue = blackboard.Get<int>(Constants.SuspicionMeter);
             if (suspicionValue >= 100)
             {
                 suspicionValue = 100; //Full Suspicion
@@ -192,21 +222,21 @@ public class HostileBehavior : MonoBehaviour
                 suspicionValue += 10; //Ramp up suspicion
             }
 
-            blackboard.Set("SuspicionMeter", suspicionValue);
+            blackboard.Set(Constants.SuspicionMeter, suspicionValue);
         }
         else
         {
-            var suspicionValue = blackboard.Get<int>("SuspicionMeter");
+            var suspicionValue = blackboard.Get<int>(Constants.SuspicionMeter);
             if (suspicionValue > 0)
             {
                 suspicionValue -= 10; //Ramp down suspicion
             }
             else
             {
-                blackboard.Set("SuspicionMeter", 0);
+                blackboard.Set(Constants.SuspicionMeter, 0);
             }
 
-            blackboard.Set("SuspicionMeter", suspicionValue);
+            blackboard.Set(Constants.SuspicionMeter, suspicionValue);
         }
     }
 
@@ -214,21 +244,50 @@ public class HostileBehavior : MonoBehaviour
     {
         if (isTargetInVisionCone)
         {
-            blackboard.Set("LastKnownPosition", target.transform.position);
+            blackboard.Set(Constants.LastKnownPosition, target.transform.position);
         }
     }
 
     private void DoSenseLinkWork()
     {
-        if (blackboard.Get<bool>("InPursuit"))
+        if (blackboard.Get<bool>(Constants.InPursuit))
         {
             NotifyLinksWithinRange();
+        }
+        else
+        {
+            if (blackboard.Get<bool>(Constants.CheckSenseLinks))
+            {
+                blackboard.Set(Constants.CheckSenseLinks, false);
+                var comrade = blackboard.Get<HostileBehavior>(Constants.LastComradeLinkWrite);
+                lock (senseLinks)
+                {
+                    SenseLink link = blackboard.Get<SenseLink>(Constants.SenseLink);
+                    blackboard.Set(Constants.LastKnownPosition, link.LastKnownTargetPosition);
+                    blackboard.Set(Constants.CheckPosition, true);
+                }
+            }
         }
     }
 
     private void NotifyLinksWithinRange()
     {
-
+        foreach (var link in senseLinks)
+        {
+            lock (link.Key.blackboard)
+            {
+                var comradePosition = link.Key.blackboard.Get<Vector3>(Constants.MyPosition);
+                var comrade = link.Key;
+                if (Vector3.Distance(blackboard.Get<Vector3>(Constants.MyPosition), comradePosition) < 40 && lineOfSightLink[link.Key])
+                {
+                    link.Value.InPursuit = true;
+                    link.Value.LastKnownTargetPosition = blackboard.Get<Vector3>(Constants.LastKnownPosition);
+                    link.Key.blackboard.Set(Constants.CheckSenseLinks, true);
+                    link.Key.blackboard.Set(Constants.LastComradeLinkWrite, link.Key);
+                    link.Key.blackboard.Set(Constants.SenseLink, link.Value);
+                }
+            }
+        }
     }
 
     private void OnDestroy()
@@ -247,11 +306,30 @@ public class HostileBehavior : MonoBehaviour
         {
             if (HasRaycastHitPlayer(other.transform)) //Only allow visibility if a ray cast hits the player object directly.
             {
-               // targetProxy = other.transform;
+                // targetProxy = other.transform;
                 target = other.transform;
                 isTargetInVisionCone = true;
                 exclamation.enabled = true;
             }
+        }
+    }
+
+    private IEnumerator UpdateLineOfSightLinks()
+    {
+        while (true)
+        {
+            foreach (var link in senseLinks)
+            {
+                if (lineOfSightLink.ContainsKey(link.Key))
+                {
+                    lineOfSightLink[link.Key] = HasRaycastLink(link.Key.transform);
+                }
+                else
+                {
+                    lineOfSightLink.Add(link.Key, HasRaycastLink(link.Key.transform));
+                }
+            }
+            yield return new WaitForSeconds(.1f);
         }
     }
 
@@ -266,6 +344,19 @@ public class HostileBehavior : MonoBehaviour
         ray = new Ray(transform.position, (transform.position - other.position).normalized);
         Physics.Raycast(ray, out hit);
         return (hit.transform.name == "Player");
+    }
+
+    bool HasRaycastLink(Transform other)
+    {
+        RaycastHit hit;
+        Physics.Linecast(transform.position, other.position, out hit);
+        return (hit.transform.name == other.name);
+        Ray ray = new Ray(transform.position, (other.position - transform.position).normalized);
+        Physics.Raycast(ray, out hit);
+        if (hit.transform.name == other.name) return true;
+        ray = new Ray(transform.position, (transform.position - other.position).normalized);
+        Physics.Raycast(ray, out hit);
+        return (hit.transform.name == other.name);
     }
 
     void OnTriggerExit(Collider other)

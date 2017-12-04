@@ -3,11 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using UnityEngine;
 
 namespace Assets.Scripts.Core
 {
-    class SenseLink
+    public class SenseLink
     {
-        private HostileBehavior hostileLink = null;
+        public Vector3 LastKnownTargetPosition { set; get; }
+
+        public bool InPursuit { set; get; }
+
     }
 }
