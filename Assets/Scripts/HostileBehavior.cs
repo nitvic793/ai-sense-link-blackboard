@@ -48,6 +48,14 @@ public class HostileBehavior : MonoBehaviour
 
     private Vector3 startPosition;
 
+    public enum EnemyType { Archer, Brawler, Normal };
+
+    public enum Personality { Aggressive, Passive };
+
+    public EnemyType enemyType;
+
+    public Personality personalityType;
+
     void Start()
     {
         blackboard.Set(Constants.IsTargetInVisionCone, false);
@@ -78,7 +86,7 @@ public class HostileBehavior : MonoBehaviour
         if (blackboard.Get<bool>(Constants.InPursuit))
         {
             Pursue();
-        }      
+        }
         else if (IsPatrol && blackboard.Get<int>(Constants.SuspicionMeter) == 0)
         {
             Patrol();
