@@ -12,6 +12,8 @@ public class HostileBehavior : MonoBehaviour
 {
     private enum PatrolPoint { A, B };
 
+    public PersonalityEnum pers;
+
     public Guid InstanceID = Guid.NewGuid();
 
     public Transform target = null;
@@ -92,6 +94,11 @@ public class HostileBehavior : MonoBehaviour
         {
             CheckPosition();
         }
+        if (blackboard.Get<bool>(Constants.HeardSound))
+        {
+            Debug.Log("I heard a sound!");
+            CheckSound();
+        }
     }
 
     private void CheckPosition()
@@ -104,6 +111,19 @@ public class HostileBehavior : MonoBehaviour
         else
         {
             blackboard.Set(Constants.CheckPosition, false);
+        }
+    }
+
+    private void CheckSound()
+    {
+        var lastPosition = blackboard.Get<Vector3>(Constants.SoundPosition);
+        if (Vector3.Distance(lastPosition, transform.position) > 1F)
+        {
+            navMeshAgent.destination = lastPosition;
+        }
+        else
+        {
+            blackboard.Set(Constants.HeardSound, false);
         }
     }
 
@@ -137,6 +157,7 @@ public class HostileBehavior : MonoBehaviour
     {
         navMeshAgent.destination = targetProxy.position;
         blackboard.Set(Constants.CheckPosition, false);
+
     }
 
     private void StartIntelligenceTasks()
@@ -190,6 +211,18 @@ public class HostileBehavior : MonoBehaviour
         {
             blackboard.Set(Constants.InPursuit, false);
             targetProxy = null;
+        }
+        switch (pers)
+        {
+            case PersonalityEnum.aggressive:
+                PursueSpeed = 15F;
+                break;
+            case PersonalityEnum.passive:
+                PursueSpeed = 5F;
+                break;
+            default:
+                PursueSpeed = 10F;
+                break;
         }
     }
 
