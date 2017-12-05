@@ -101,6 +101,11 @@ public class HostileBehavior : MonoBehaviour
         {
             CheckPosition();
         }
+        else if (blackboard.Get<bool>(Constants.HeardSound))
+        {
+            Debug.Log("I heard a sound!");
+            CheckSound();
+        }
         else if (IsPatrol && blackboard.Get<int>(Constants.SuspicionMeter) == 0)
         {
             Patrol();
@@ -131,11 +136,6 @@ public class HostileBehavior : MonoBehaviour
             attackTime = 0F;
             player.InflictDamage(2F);
         }
-        if (blackboard.Get<bool>(Constants.HeardSound))
-        {
-            Debug.Log("I heard a sound!");
-            CheckSound();
-        }
     }
 
     private void CheckPosition()
@@ -154,7 +154,7 @@ public class HostileBehavior : MonoBehaviour
     private void CheckSound()
     {
         var lastPosition = blackboard.Get<Vector3>(Constants.SoundPosition);
-        if (Vector3.Distance(lastPosition, transform.position) > 1F)
+        if (Vector3.Distance(lastPosition, transform.position) > 2F)
         {
             navMeshAgent.destination = lastPosition;
         }
