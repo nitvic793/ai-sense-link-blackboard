@@ -20,6 +20,8 @@ namespace Assets.Scripts.Core
         public const string LastComradeLinkWrite = "LastComradeLinkWrite";
         public const string UpdateLineOfSightLinks = "UpdateLineOfSightLinks";
         public const string SenseLink = "SenseLink";
+        public const string IsAttacking = "IsAttacking";
+        public const string HaveDirectLosWithPlayer = "HaveDirectLosWithPlayer"; //Direct line of sight
         public const string HeardSound = "HeardSound";
         public const string SoundPosition = "SoundPosition";
     }

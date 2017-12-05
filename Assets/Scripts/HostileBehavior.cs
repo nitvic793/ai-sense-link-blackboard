@@ -50,11 +50,22 @@ public class HostileBehavior : MonoBehaviour
 
     private Vector3 startPosition;
 
+    public enum EnemyType { Archer, Brawler, Normal };
+
+    public enum Personality { Aggressive, Passive };
+
+    public EnemyType enemyType;
+
+    public Personality personalityType;
+
+    private float attackTime = 0F;
+
     void Start()
     {
         blackboard.Set(Constants.IsTargetInVisionCone, false);
         blackboard.Set(Constants.SuspicionMeter, 0);
         blackboard.Set(Constants.InPursuit, false);
+        blackboard.Set(Constants.IsAttacking, false);
         blackboard.Set(Constants.CoolDownTime, 0);
         blackboard.Set(Constants.MyPosition, transform.position);
         blackboard.Set(Constants.MyName, name);
@@ -62,6 +73,7 @@ public class HostileBehavior : MonoBehaviour
         currentPatrolPoint = PatrolPoint.B;
         navMeshAgent = transform.GetComponent<NavMeshAgent>();
         startPosition = transform.position;
+        target = GameObject.Find("Player").transform;
         StartIntelligenceTasks();
         StartCoroutine(Constants.UpdateLineOfSightLinks);
     }
@@ -69,18 +81,26 @@ public class HostileBehavior : MonoBehaviour
 
     void Update()
     {
-        blackboard.Set(Constants.MyPosition, transform.position);
-        UpdateLastKnownTargetPosition();
+        UpdateSensors();
         Arbiter();
     }
 
     private void Arbiter()
     {
         navMeshAgent.isStopped = false;
-        if (blackboard.Get<bool>(Constants.InPursuit))
+        if (blackboard.Get<bool>(Constants.IsAttacking))
+        {
+            navMeshAgent.isStopped = true;
+            Attack();
+        }
+        else if (blackboard.Get<bool>(Constants.InPursuit))
         {
             Pursue();
-        }      
+        }
+        else if (blackboard.Get<bool>(Constants.CheckPosition))
+        {
+            CheckPosition();
+        }
         else if (IsPatrol && blackboard.Get<int>(Constants.SuspicionMeter) == 0)
         {
             Patrol();
@@ -88,11 +108,28 @@ public class HostileBehavior : MonoBehaviour
         else
         {
             navMeshAgent.isStopped = true; //Wait
+        }        
+    }
+
+    private void Attack()
+    {
+        if (!IsWithinRange(target.position))
+        {
+            blackboard.Set(Constants.IsAttacking, false);
+            return;
         }
 
-        if (blackboard.Get<bool>(Constants.CheckPosition))
+        Vector3 targetDir = target.position - transform.position;
+        float step = 1F * Time.deltaTime;
+        Vector3 newDir = Vector3.RotateTowards(transform.forward, targetDir, step, 0.0F);
+        Debug.DrawRay(transform.position, newDir, Color.red);
+        transform.rotation = Quaternion.LookRotation(newDir);
+        var player = target.GetComponent<Player>();
+        attackTime += Time.deltaTime;
+        if (attackTime > 0.25f)
         {
-            CheckPosition();
+            attackTime = 0F;
+            player.InflictDamage(2F);
         }
         if (blackboard.Get<bool>(Constants.HeardSound))
         {
@@ -192,7 +229,27 @@ public class HostileBehavior : MonoBehaviour
         CheckPursue();
         HandleSuspicion();
         UpdatePursueTarget();
+        UpdateAttack();
         UpdateCoolDown();
+    }
+
+    private void UpdateAttack()
+    {
+        var playerPosition = blackboard.Get<Vector3>(Constants.LastKnownPosition);
+        if (IsWithinRange(playerPosition))
+        {
+            blackboard.Set(Constants.IsAttacking, true);
+        }
+        else
+        {
+            blackboard.Set(Constants.IsAttacking, false);
+        }
+    }
+
+    private bool IsWithinRange(Vector3 position)
+    {
+        var myPosition = blackboard.Get<Vector3>(Constants.MyPosition);
+        return (Vector3.Distance(myPosition, position) < 3.5F);
     }
 
     private void UpdatePursueTarget()
@@ -273,12 +330,16 @@ public class HostileBehavior : MonoBehaviour
         }
     }
 
-    private void UpdateLastKnownTargetPosition()
+    private void UpdateSensors()
     {
+        blackboard.Set(Constants.MyPosition, transform.position);
         if (isTargetInVisionCone)
         {
             blackboard.Set(Constants.LastKnownPosition, target.transform.position);
         }
+
+        var player = GameObject.Find("Player");
+        blackboard.Set(Constants.HaveDirectLosWithPlayer, HasRaycastHitPlayer(player.transform));
     }
 
     private void DoSenseLinkWork()
@@ -347,6 +408,19 @@ public class HostileBehavior : MonoBehaviour
         }
     }
 
+    private void OnTriggerStay(Collider other)
+    {
+        if (other.name == "Player")
+        {
+            if (HasRaycastHitPlayer(other.transform)) //Only allow visibility if a ray cast hits the player object directly.
+            {
+                // targetProxy = other.transform;
+                isTargetInVisionCone = true;
+                exclamation.enabled = true;
+            }
+        }
+    }
+
     private IEnumerator UpdateLineOfSightLinks()
     {
         while (true)
@@ -370,7 +444,7 @@ public class HostileBehavior : MonoBehaviour
     {
         RaycastHit hit;
         Physics.Linecast(transform.position, other.position, out hit);
-        return (hit.transform.name == "Player");
+        return (hit.transform?.name == "Player");
         Ray ray = new Ray(transform.position, (other.position - transform.position).normalized);
         Physics.Raycast(ray, out hit);
         if (hit.transform.name == "Player") return true;
@@ -383,7 +457,7 @@ public class HostileBehavior : MonoBehaviour
     {
         RaycastHit hit;
         Physics.Linecast(transform.position, other.position, out hit);
-        return (hit.transform.name == other.name);
+        return (hit.transform?.name == other.name);
         Ray ray = new Ray(transform.position, (other.position - transform.position).normalized);
         Physics.Raycast(ray, out hit);
         if (hit.transform.name == other.name) return true;
@@ -396,7 +470,6 @@ public class HostileBehavior : MonoBehaviour
     {
         if (other.name == "Player")
         {
-            target = null;
             exclamation.enabled = false;
             isTargetInVisionCone = false;
         }
