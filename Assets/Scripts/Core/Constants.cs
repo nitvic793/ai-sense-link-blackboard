@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace Assets.Scripts.Core
 {
+    /// <summary>
+    /// Core Constants Definitions
+    /// </summary>
     public class Constants
     {
         public const string IsTargetInVisionCone = "IsTargetInVisionCone";

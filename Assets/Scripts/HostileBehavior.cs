@@ -8,6 +8,9 @@ using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.UI;
 
+/// <summary>
+/// Hostile Behavior Script
+/// </summary>
 public class HostileBehavior : MonoBehaviour
 {
     private enum PatrolPoint { A, B };
@@ -25,9 +28,13 @@ public class HostileBehavior : MonoBehaviour
     public int EnemyCoolDownTime = 100;
 
     public Transform PatrolPointA = null;
+
     public Transform PatrolPointB = null;
+
     private Transform currentPatrolTarget = null;
+
     private PatrolPoint currentPatrolPoint;
+
     private Transform targetProxy = null;
 
     public Blackboard blackboard = new Blackboard();
@@ -251,6 +258,9 @@ public class HostileBehavior : MonoBehaviour
         }, cancellationToken.Token, TaskCreationOptions.LongRunning));
     }
 
+    /// <summary>
+    /// AI System Tasks
+    /// </summary>
     private void DoSystemsWork()
     {
         blackboard.Set(Constants.IsTargetInVisionCone, isTargetInVisionCone);
@@ -261,6 +271,9 @@ public class HostileBehavior : MonoBehaviour
         UpdateCoolDown();
     }
 
+    /// <summary>
+    /// Update attack logic to Blackboard
+    /// </summary>
     private void UpdateAttack()
     {
         var playerPosition = blackboard.Get<Vector3>(Constants.LastKnownPosition);
@@ -274,12 +287,20 @@ public class HostileBehavior : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// If position is within range of this entity
+    /// </summary>
+    /// <param name="position">Position to check with</param>
+    /// <returns></returns>
     private bool IsWithinRange(Vector3 position)
     {
         var myPosition = blackboard.Get<Vector3>(Constants.MyPosition);
         return (Vector3.Distance(myPosition, position) < 3.5F);
     }
 
+    /// <summary>
+    /// Update target if suspicion is high
+    /// </summary>
     private void UpdatePursueTarget()
     {
         var suspicionValue = blackboard.Get<int>(Constants.SuspicionMeter);
@@ -290,6 +311,9 @@ public class HostileBehavior : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Check if you need to pursue
+    /// </summary>
     private void CheckPursue()
     {
         if (blackboard.Get<int>(Constants.CoolDownTime) == 0)
@@ -311,6 +335,9 @@ public class HostileBehavior : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Update cool down parameters in blackboard
+    /// </summary>
     void UpdateCoolDown()
     {
         if (blackboard.Get<int>(Constants.SuspicionMeter) > 0 && blackboard.Get<bool>(Constants.InPursuit))
@@ -326,6 +353,9 @@ public class HostileBehavior : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Update suspicion value in blackboard
+    /// </summary>
     private void HandleSuspicion()
     {
         if (isTargetInVisionCone)
@@ -358,6 +388,9 @@ public class HostileBehavior : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Update sensory data
+    /// </summary>
     private void UpdateSensors()
     {
         blackboard.Set(Constants.MyPosition, transform.position);
@@ -370,6 +403,9 @@ public class HostileBehavior : MonoBehaviour
         blackboard.Set(Constants.HaveDirectLosWithPlayer, HasRaycastHitPlayer(player.transform));
     }
 
+    /// <summary>
+    /// Perform sense link tasks
+    /// </summary>
     private void DoSenseLinkWork()
     {
         if (blackboard.Get<bool>(Constants.InPursuit))
@@ -392,6 +428,9 @@ public class HostileBehavior : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Notify links within range of this entity
+    /// </summary>
     private void NotifyLinksWithinRange()
     {
         foreach (var link in senseLinks)

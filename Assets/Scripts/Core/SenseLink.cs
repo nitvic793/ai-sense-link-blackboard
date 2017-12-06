@@ -7,6 +7,9 @@ using UnityEngine;
 
 namespace Assets.Scripts.Core
 {
+    /// <summary>
+    /// Sense Link structure
+    /// </summary>
     public class SenseLink
     {
         public Vector3 LastKnownTargetPosition { set; get; }

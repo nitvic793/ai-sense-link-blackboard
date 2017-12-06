@@ -7,9 +7,12 @@ using UnityEngine;
 public class EnemyCollection : MonoBehaviour
 {
     private Dictionary<HashSet<string>, SenseLink> enemyDictionary;
+    
+    /// <summary>
+    /// Instantiate links between all enemy game objects
+    /// </summary>
     void Start()
-    {
-        
+    {        
         enemyDictionary = new Dictionary<HashSet<string>, SenseLink>(HashSet<string>.CreateSetComparer());
         var enemies = GetComponentsInChildren<HostileBehavior>();
         foreach (var enemy in enemies)

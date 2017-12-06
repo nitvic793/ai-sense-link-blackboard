@@ -2,15 +2,15 @@
 
 public class AudioGenerator : MonoBehaviour
 {
-
     public AudioClip soundClip;
 
+    /// <summary>
+    /// Notifies all entities within range if an audio is played.
+    /// </summary>
     void Update()
     {
-
         if (Input.GetMouseButtonDown(0))
         {
-
             GetComponent<AudioSource>().PlayOneShot(soundClip);
             RaycastHit hit;
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
