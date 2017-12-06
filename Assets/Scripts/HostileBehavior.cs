@@ -85,6 +85,9 @@ public class HostileBehavior : MonoBehaviour
         Arbiter();
     }
 
+    /// <summary>
+    /// The Arbiter of the system. Checks the blackboard for the state of the system and make decisions.
+    /// </summary>
     private void Arbiter()
     {
         navMeshAgent.isStopped = false;
@@ -116,6 +119,9 @@ public class HostileBehavior : MonoBehaviour
         }        
     }
 
+    /// <summary>
+    /// Inflict damage on the player if within range. 
+    /// </summary>
     private void Attack()
     {
         if (!IsWithinRange(target.position))
@@ -124,6 +130,7 @@ public class HostileBehavior : MonoBehaviour
             return;
         }
 
+        //Face the player object.
         Vector3 targetDir = target.position - transform.position;
         float step = 1F * Time.deltaTime;
         Vector3 newDir = Vector3.RotateTowards(transform.forward, targetDir, step, 0.0F);
@@ -131,6 +138,7 @@ public class HostileBehavior : MonoBehaviour
         transform.rotation = Quaternion.LookRotation(newDir);
         var player = target.GetComponent<Player>();
         attackTime += Time.deltaTime;
+        //End Face the player
         if (attackTime > 0.25f)
         {
             attackTime = 0F;
@@ -138,6 +146,9 @@ public class HostileBehavior : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Check location provided by sense links
+    /// </summary>
     private void CheckPosition()
     {
         var lastPosition = blackboard.Get<Vector3>(Constants.LastKnownPosition);
@@ -272,13 +283,13 @@ public class HostileBehavior : MonoBehaviour
         switch (pers)
         {
             case PersonalityEnum.aggressive:
-                PursueSpeed = 15F;
+                PursueSpeed = 10F;
                 break;
             case PersonalityEnum.passive:
-                PursueSpeed = 5F;
+                PursueSpeed = 4F;
                 break;
             default:
-                PursueSpeed = 10F;
+                PursueSpeed = 6F;
                 break;
         }
     }

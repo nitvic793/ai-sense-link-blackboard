@@ -1175,7 +1175,7 @@ Prefab:
     - target: {fileID: 114537773532994382, guid: 49327a3c5031bb143a5fb42d0e7c8a92,
         type: 2}
       propertyPath: m_distance
-      value: 25.18
+      value: 26.4
       objectReference: {fileID: 0}
     - target: {fileID: 224126178614887430, guid: 49327a3c5031bb143a5fb42d0e7c8a92,
         type: 2}
@@ -1516,7 +1516,7 @@ Prefab:
     - target: {fileID: 114537773532994382, guid: 49327a3c5031bb143a5fb42d0e7c8a92,
         type: 2}
       propertyPath: m_distance
-      value: 25.18
+      value: 28.09
       objectReference: {fileID: 0}
     - target: {fileID: 224126178614887430, guid: 49327a3c5031bb143a5fb42d0e7c8a92,
         type: 2}
@@ -1571,7 +1571,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0050f6459e9d29a4cbaffe5b646604e6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  pers: 0
+  pers: 1
   target: {fileID: 0}
   IsPatrol: 1
   PursueSpeed: 10
