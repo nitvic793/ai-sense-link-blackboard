@@ -166,7 +166,7 @@ public class HostileBehavior : MonoBehaviour
 
     private void Patrol()
     {
-        if (Vector3.Distance(currentPatrolTarget.transform.position, transform.position) > 1F)
+        if (Vector3.Distance(currentPatrolTarget.transform.position, transform.position) > 10F)
         {
             navMeshAgent.destination = currentPatrolTarget.position;
         }
@@ -194,7 +194,7 @@ public class HostileBehavior : MonoBehaviour
     {
         navMeshAgent.destination = targetProxy.position;
         blackboard.Set(Constants.CheckPosition, false);
-
+        navMeshAgent.speed = PursueSpeed;
     }
 
     private void StartIntelligenceTasks()
