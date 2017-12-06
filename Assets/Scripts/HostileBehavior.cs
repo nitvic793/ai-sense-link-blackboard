@@ -162,6 +162,9 @@ public class HostileBehavior : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Investigate the place the sound originated from. 
+    /// </summary>
     private void CheckSound()
     {
         var lastPosition = blackboard.Get<Vector3>(Constants.SoundPosition);
@@ -175,6 +178,9 @@ public class HostileBehavior : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Patrol between two patrol points;
+    /// </summary>
     private void Patrol()
     {
         if (Vector3.Distance(currentPatrolTarget.transform.position, transform.position) > 10F)
@@ -201,6 +207,9 @@ public class HostileBehavior : MonoBehaviour
         navMeshAgent.destination = startPosition;
     }
 
+    /// <summary>
+    /// Pursue Player
+    /// </summary>
     private void Pursue()
     {
         navMeshAgent.destination = targetProxy.position;
@@ -208,6 +217,9 @@ public class HostileBehavior : MonoBehaviour
         navMeshAgent.speed = PursueSpeed;
     }
 
+    /// <summary>
+    /// Start all AI related tasks.
+    /// </summary>
     private void StartIntelligenceTasks()
     {
         AddTask(DoSystemsWork);
@@ -218,6 +230,11 @@ public class HostileBehavior : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Add a long running task
+    /// </summary>
+    /// <param name="action"></param>
+    /// <param name="updatePeriod"></param>
     private void AddTask(Action action, long updatePeriod = taskUpdatePeriod)
     {
         tasks.Add(new Task(async () =>
@@ -229,7 +246,7 @@ public class HostileBehavior : MonoBehaviour
                 {
                     action();
                 }
-                await Task.Delay(TimeSpan.FromMilliseconds(taskUpdatePeriod), cancellationToken.Token);
+                await Task.Delay(TimeSpan.FromMilliseconds(updatePeriod), cancellationToken.Token);
             }
         }, cancellationToken.Token, TaskCreationOptions.LongRunning));
     }
@@ -485,5 +502,4 @@ public class HostileBehavior : MonoBehaviour
             isTargetInVisionCone = false;
         }
     }
-
 }
